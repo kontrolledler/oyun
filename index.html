@@ -449,7 +449,7 @@
       <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M12 2l2.6 6.2L21 9l-5 4.4L17.4 21 12 17.3 6.6 21 8 13.4 3 9l6.4-0.8L12 2Z" stroke="#f2b544" stroke-width="1.5" stroke-linejoin="round"/></svg>
     </div>
     <h2>Labirenti tamamladın</h2>
-    <p>50 seviyenin tamamını bitirdin. İstersen baştan başlayıp yeni haritalarla tekrar oynayabilirsin.</p>
+    <p>100 seviyenin tamamını bitirdin. İstersen baştan başlayıp yeni haritalarla tekrar oynayabilirsin.</p>
     <button class="primary" id="playAgainBtn">Tekrar oyna</button>
   </div>
 </div>
@@ -460,7 +460,8 @@
 
   // ---------- state ----------
   var STORAGE_KEY = 'labirent_level_v1';
-  var MAX_LEVEL = 50;
+  var STATE_KEY = 'labirent_state_v1';
+  var MAX_LEVEL = 1000;
   var level = 1;
   var board = null;      // {size, blocked:Set(r*size+c), start:[r,c], end:[r,c], total}
   var path = [];         // array of [r,c]
@@ -490,13 +491,15 @@
 
   // ---------- level configuration ----------
   function levelConfig(lvl){
-    var tier = Math.min(5, Math.floor((lvl-1)/8)); // 0..5
+    var TIER_COUNT = 6;
+    var tierWidth = Math.ceil(MAX_LEVEL/TIER_COUNT); // levels per tier (~17 for 100)
+    var tier = Math.min(TIER_COUNT-1, Math.floor((lvl-1)/tierWidth)); // 0..5
     var size = 4+tier; // 4..9
     // [min,max] blocked-cell counts per tier, calibrated so a solvable
     // map is found quickly almost every time at that size.
     var ranges = [[3,6],[5,9],[7,12],[6,10],[7,10],[7,10]];
-    var posInTier = (lvl-1)%8;
-    var t = posInTier/7;
+    var posInTier = (lvl-1) - tier*tierWidth;
+    var t = tierWidth>1 ? Math.min(1, posInTier/(tierWidth-1)) : 0;
     var lo = ranges[tier][0], hi = ranges[tier][1];
     var blockedCount = Math.round(lo + (hi-lo)*t);
     return { size:size, blockedCount:blockedCount };
@@ -644,6 +647,38 @@
     };
   }
 
+  // ---------- persistence (aynı haritaya ve ilerlemeye geri dönebilmek için) ----------
+  function saveState(){
+    if(!board) return;
+    try{
+      localStorage.setItem(STATE_KEY, JSON.stringify({
+        level: level,
+        board: {
+          size: board.size,
+          blocked: Array.from(board.blocked),
+          start: board.start,
+          end: board.end,
+          total: board.total
+        },
+        path: path
+      }));
+    }catch(e){}
+  }
+
+  function loadState(){
+    try{
+      var raw = localStorage.getItem(STATE_KEY);
+      if(!raw) return null;
+      var obj = JSON.parse(raw);
+      if(!obj || !obj.board || typeof obj.level !== 'number') return null;
+      return obj;
+    }catch(e){ return null; }
+  }
+
+  function clearSavedState(){
+    try{ localStorage.removeItem(STATE_KEY); }catch(e){}
+  }
+
   // ---------- rendering ----------
   function buildBoardDom(){
     gridWrap.innerHTML = '';
@@ -761,6 +796,7 @@
 
     updateHud();
     checkDeadEnd();
+    saveState();
   }
 
   function updateHud(){
@@ -1001,12 +1037,14 @@
     closeOverlay('finishOverlay');
     level = 1;
     localStorage.setItem(STORAGE_KEY, '1');
+    clearSavedState();
     startLevel();
   });
   document.getElementById('restartAllBtn').addEventListener('click', function(){
     if(confirm('Baştan başlamak istediğine emin misin? Mevcut seviyen sıfırlanacak.')){
       level = 1;
       localStorage.setItem(STORAGE_KEY, '1');
+      clearSavedState();
       startLevel();
     }
   });
@@ -1021,11 +1059,28 @@
   function startLevel(){
     hintEl.classList.remove('show');
     gridWrap.innerHTML = '';
+
+    var saved = loadState();
+    if(saved && saved.level === level){
+      board = {
+        size: saved.board.size,
+        blocked: new Set(saved.board.blocked),
+        start: saved.board.start,
+        end: saved.board.end,
+        total: saved.board.total
+      };
+      path = Array.isArray(saved.path) ? saved.path : [];
+      buildBoardDom();
+      maybeWin();
+      return;
+    }
+
     progTextEl.textContent = 'Harita hazırlanıyor…';
     setTimeout(function(){
       board = generateBoard(level);
       path = [];
       buildBoardDom();
+      saveState();
     }, 16);
   }
 
