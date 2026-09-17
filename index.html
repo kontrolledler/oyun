@@ -493,13 +493,18 @@
 
   // ---------- level configuration ----------
   function levelConfig(lvl){
-    var TIER_COUNT = 20;
-    var tierWidth = Math.ceil(MAX_LEVEL/TIER_COUNT); // levels per tier (~17 for 100)
-    var tier = Math.min(TIER_COUNT-1, Math.floor((lvl-1)/tierWidth)); // 0..5
-    var size = 4+tier; // 4..9
-    // [min,max] blocked-cell counts per tier, calibrated so a solvable
-    // map is found quickly almost every time at that size.
-    var ranges = [[3,6],[5,9],[7,12],[6,10],[7,10],[7,10]];
+    var TIER_COUNT = 10;
+    var tierWidth = Math.ceil(MAX_LEVEL/TIER_COUNT); // 10 seviyede bir zorlaşma
+    var tier = Math.min(TIER_COUNT-1, Math.floor((lvl-1)/tierWidth)); // 0..9
+    // Işzgara 9x9'da (bulmacanın hâlâ hızlı ve güvenilir şekilde çözülebilir
+    // üretilebildiği pratik üst sınır) doyuma ulaşıp orada kalıyor; ondan
+    // sonraki zorluk artışı tamamen ölü hücre sayısındaki artıştan geliyor.
+    var sizeByTier = [4,5,6,7,8,9,9,9,9,9];
+    var size = sizeByTier[tier];
+    // [min,max] ölü hücre sayısı; her aralığın başlangıcı bir önceki
+    // aralığın bitişiyle aynı, böylece 100 seviye boyunca hiç düşüş
+    // olmadan (monotonik) artıyor.
+    var ranges = [[2,4],[4,6],[6,8],[8,9],[9,9],[9,10],[10,10],[10,10],[10,11],[11,11]];
     var posInTier = (lvl-1) - tier*tierWidth;
     var t = tierWidth>1 ? Math.min(1, posInTier/(tierWidth-1)) : 0;
     var lo = ranges[tier][0], hi = ranges[tier][1];
@@ -619,8 +624,8 @@
     var cfg = levelConfig(lvl);
     var size = cfg.size;
     var targetBlocked = cfg.blockedCount;
-    var stepBudget = 18000;
-    var maxAttempts = targetBlocked>0 ? 600 : 1;
+    var stepBudget = 25000;
+    var maxAttempts = targetBlocked>0 ? 800 : 1;
     var result = null;
 
     for(var a=0; a<maxAttempts; a++){
