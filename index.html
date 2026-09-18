@@ -623,20 +623,28 @@
   function generateBoard(lvl){
     var cfg = levelConfig(lvl);
     var size = cfg.size;
-    var targetBlocked = cfg.blockedCount;
     var stepBudget = 25000;
-    var maxAttempts = targetBlocked>0 ? 800 : 1;
     var result = null;
 
-    for(var a=0; a<maxAttempts; a++){
-      var pick = targetBlocked>0 ? pickBlockedBalanced(size, targetBlocked) : { blockedSet:new Set(), balanced:true };
-      if(!pick.balanced) continue;
-      var totalFree = size*size - pick.blockedSet.size;
-      var p = tryGeneratePath(size, pick.blockedSet, totalFree, stepBudget);
-      if(p && p.length===totalFree){
-        result = { size:size, blocked:pick.blockedSet, path:p, total:totalFree };
-        break;
+    // Hedeflenen ölü hücre sayısıyla dene; olmazsa direkt sıfıra değil,
+    // önce bir azlığıyla dene (hedef-1, hedef-2, ...). Böylece "hiç ölü
+    // hücre yok" durumu neredeyse hiç yaşanmaz — sadece gerçekten
+    // imkansız bir durumda en sona (0'a) düşer.
+    for(var bc = cfg.blockedCount; bc >= 0; bc--){
+      var maxAttempts = (bc === cfg.blockedCount) ? 800 : 250;
+      var succeeded = false;
+      for(var a=0; a<maxAttempts; a++){
+        var pick = pickBlockedBalanced(size, bc);
+        if(!pick.balanced) continue;
+        var totalFree = size*size - pick.blockedSet.size;
+        var p = tryGeneratePath(size, pick.blockedSet, totalFree, stepBudget);
+        if(p && p.length===totalFree){
+          result = { size:size, blocked:pick.blockedSet, path:p, total:totalFree };
+          succeeded = true;
+          break;
+        }
       }
+      if(succeeded) break;
     }
 
     if(!result){
