@@ -122,6 +122,32 @@
     flex-direction:column;
     gap:4px;
   }
+  .icon-btn{
+    flex:0 0 auto;
+    width:38px;
+    height:38px;
+    padding:0;
+    border-radius:12px;
+    border:none;
+    background:rgba(255,255,255,0.05);
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,0.07);
+    color:var(--text-muted);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    margin-bottom:1px;
+    transition:background .15s ease, color .15s ease, transform .1s ease;
+  }
+  .icon-btn svg{ flex:0 0 auto; }
+  .icon-btn:active{ transform:scale(0.94); }
+  .icon-btn svg{ width:19px; height:19px; }
+  .icon-btn.on{ color:var(--amber); background:rgba(242,181,68,0.10); }
+  .top-right{
+    display:flex;
+    align-items:flex-end;
+    gap:10px;
+  }
   .level-tag .num{
     font-family:'Space Grotesk',sans-serif;
     font-weight:600;
@@ -389,9 +415,15 @@
       <div class="mark">Labirent</div>
       <div class="sub">her hücreden bir kez geç</div>
     </div>
-    <div class="level-tag">
-      <div class="num" id="levelNum">Seviye 1</div>
-      <div class="prog" id="progText">0 / 0 hücre</div>
+    <div class="top-right">
+      <button id="soundBtn" class="icon-btn" aria-label="Sesi aç">
+        <svg id="soundIconMuted" viewBox="0 0 24 24" fill="none"><path d="M4 9v6h4l5 4V5L8 9H4Z" fill="currentColor"/><path d="M16 9l5 5M21 9l-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        <svg id="soundIconOn" viewBox="0 0 24 24" fill="none" style="display:none"><path d="M4 9v6h4l5 4V5L8 9H4Z" fill="currentColor"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg>
+      </button>
+      <div class="level-tag">
+        <div class="num" id="levelNum">Seviye 1</div>
+        <div class="prog" id="progText">0 / 0 hücre</div>
+      </div>
     </div>
   </header>
 
@@ -405,7 +437,7 @@
     <button class="ghost" id="undoBtn">Geri al</button>
     <button id="resetBtn">Sıfırla</button>
     <button class="ghost" id="fullscreenBtn" style="display:none">Tam ekran</button>
-    <button class="primary" id="howToBtn">Nasıl oynanır?</button>
+    <button class="ghost" id="howToBtn">Nasıl oynanır?</button>
   </div>
 
   <div class="hint" id="hint"></div>
@@ -451,7 +483,7 @@
       <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M12 2l2.6 6.2L21 9l-5 4.4L17.4 21 12 17.3 6.6 21 8 13.4 3 9l6.4-0.8L12 2Z" stroke="#f2b544" stroke-width="1.5" stroke-linejoin="round"/></svg>
     </div>
     <h2>Labirenti tamamladın</h2>
-    <p>100 seviyenin tamamını bitirdin. İstersen baştan başlayıp yeni haritalarla tekrar oynayabilirsin.</p>
+    <p>250 seviyenin tamamını bitirdin. İstersen baştan başlayıp yeni haritalarla tekrar oynayabilirsin.</p>
     <button class="primary" id="playAgainBtn">Tekrar oyna</button>
   </div>
 </div>
@@ -463,7 +495,7 @@
   // ---------- state ----------
   var STORAGE_KEY = 'labirent_level_v1';
   var STATE_KEY = 'labirent_state_v1';
-  var MAX_LEVEL = 100;
+  var MAX_LEVEL = 250;
   var level = 1;
   var board = null;      // {size, blocked:Set(r*size+c), start:[r,c], end:[r,c], total}
   var path = [];         // array of [r,c]
@@ -493,22 +525,31 @@
 
   // ---------- level configuration ----------
   function levelConfig(lvl){
-    var TIER_COUNT = 10;
-    var tierWidth = Math.ceil(MAX_LEVEL/TIER_COUNT); // 10 seviyede bir zorlaşma
-    var tier = Math.min(TIER_COUNT-1, Math.floor((lvl-1)/tierWidth)); // 0..9
-    // Işzgara 9x9'da (bulmacanın hâlâ hızlı ve güvenilir şekilde çözülebilir
-    // üretilebildiği pratik üst sınır) doyuma ulaşıp orada kalıyor; ondan
-    // sonraki zorluk artışı tamamen ölü hücre sayısındaki artıştan geliyor.
-    var sizeByTier = [4,5,6,7,8,9,9,9,9,9];
-    var size = sizeByTier[tier];
+    var sizeTierWidth = 10; // 10 seviyede bir zorlaşma
+    var sizeTier = Math.min(4, Math.floor((lvl-1)/sizeTierWidth)); // 0..4
+    // Izgara en fazla 8x8 olacak şekilde büyüyor (4x4'ten başlayıp
+    // 41. seviyeden itibaren 8x8'de sabitleniyor).
+    var size = 4 + sizeTier; // 4..8
+
     // [min,max] ölü hücre sayısı; her aralığın başlangıcı bir önceki
-    // aralığın bitişiyle aynı, böylece 100 seviye boyunca hiç düşüş
-    // olmadan (monotonik) artıyor.
-    var ranges = [[2,4],[4,6],[6,8],[8,9],[9,9],[9,10],[10,10],[10,10],[10,11],[11,11]];
-    var posInTier = (lvl-1) - tier*tierWidth;
-    var t = tierWidth>1 ? Math.min(1, posInTier/(tierWidth-1)) : 0;
-    var lo = ranges[tier][0], hi = ranges[tier][1];
-    var blockedCount = Math.round(lo + (hi-lo)*t);
+    // aralığın bitişiyle aynı, böylece hiç düşüş olmadan (monotonik)
+    // artıyor. Izgara 8x8'de sabitlendikten sonra (41. seviyeden
+    // itibaren) hâlâ güvenle çözülebilir üretimin izin verdiği en üst
+    // sınıra kadar çok yavaş artmaya devam ediyor.
+    var earlyRanges = [[2,4],[4,6],[6,8],[8,9]]; // sizeTier 0..3 (lvl 1-40)
+    var lockedRange = [9,10]; // sizeTier 4, lvl 41-250 (8x8'de sabit)
+
+    var blockedCount;
+    if(sizeTier < 4){
+      var posInTier = (lvl-1) - sizeTier*sizeTierWidth;
+      var t = Math.min(1, posInTier/(sizeTierWidth-1));
+      var lo = earlyRanges[sizeTier][0], hi = earlyRanges[sizeTier][1];
+      blockedCount = Math.round(lo + (hi-lo)*t);
+    } else {
+      var rangeStart = 4*sizeTierWidth + 1; // 41
+      var t2 = Math.min(1, (lvl-rangeStart)/(MAX_LEVEL-rangeStart));
+      blockedCount = Math.round(lockedRange[0] + (lockedRange[1]-lockedRange[0])*t2);
+    }
     return { size:size, blockedCount:blockedCount };
   }
 
@@ -852,6 +893,9 @@
   }
 
   // ---------- audio ----------
+  var SOUND_KEY = 'labirent_sound_v1';
+  var soundEnabled = localStorage.getItem(SOUND_KEY) === '1';
+
   function ensureAudio(){
     if(!audioCtx){
       try{ audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
@@ -861,8 +905,24 @@
     }
   }
 
+  function updateSoundIcon(){
+    document.getElementById('soundIconMuted').style.display = soundEnabled ? 'none' : '';
+    document.getElementById('soundIconOn').style.display = soundEnabled ? '' : 'none';
+    var btn = document.getElementById('soundBtn');
+    btn.classList.toggle('on', soundEnabled);
+    btn.setAttribute('aria-label', soundEnabled ? 'Sesi kapat' : 'Sesi aç');
+  }
+
+  document.getElementById('soundBtn').addEventListener('click', function(){
+    soundEnabled = !soundEnabled;
+    if(soundEnabled) ensureAudio();
+    try{ localStorage.setItem(SOUND_KEY, soundEnabled ? '1' : '0'); }catch(e){}
+    updateSoundIcon();
+  });
+  updateSoundIcon();
+
   function playWinChime(){
-    if(!audioCtx) return;
+    if(!soundEnabled || !audioCtx) return;
     var now = audioCtx.currentTime;
     var notes = [523.25, 659.25, 783.99, 1046.50]; // do-mi-sol-do (C5 E5 G5 C6)
     notes.forEach(function(freq, i){
@@ -956,7 +1016,7 @@
 
   function onPointerDown(e){
     e.preventDefault();
-    ensureAudio();
+    if(soundEnabled) ensureAudio();
     var pt = cellFromPoint(e.clientX, e.clientY);
     if(!pt) return;
     var r=pt[0], c=pt[1];
