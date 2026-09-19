@@ -537,7 +537,7 @@
     // itibaren) hâlâ güvenle çözülebilir üretimin izin verdiği en üst
     // sınıra kadar çok yavaş artmaya devam ediyor.
     var earlyRanges = [[2,4],[4,6],[6,8],[8,9]]; // sizeTier 0..3 (lvl 1-40)
-    var lockedRange = [9,10]; // sizeTier 4, lvl 41-250 (8x8'de sabit)
+    var lockedRange = [9,12]; // sizeTier 4, lvl 41-250 (8x8'de sabit; eski 9x9'un zorluğunu yakalamak için tavan yükseltildi)
 
     var blockedCount;
     if(sizeTier < 4){
@@ -664,7 +664,7 @@
   function generateBoard(lvl){
     var cfg = levelConfig(lvl);
     var size = cfg.size;
-    var stepBudget = 25000;
+    var stepBudget = 22000;
     var result = null;
 
     // Hedeflenen ölü hücre sayısıyla dene; olmazsa direkt sıfıra değil,
@@ -672,7 +672,7 @@
     // hücre yok" durumu neredeyse hiç yaşanmaz — sadece gerçekten
     // imkansız bir durumda en sona (0'a) düşer.
     for(var bc = cfg.blockedCount; bc >= 0; bc--){
-      var maxAttempts = (bc === cfg.blockedCount) ? 800 : 250;
+      var maxAttempts = (bc === cfg.blockedCount) ? 600 : 200;
       var succeeded = false;
       for(var a=0; a<maxAttempts; a++){
         var pick = pickBlockedBalanced(size, bc);
