@@ -525,32 +525,31 @@
 
   // ---------- level configuration ----------
   function levelConfig(lvl){
-    var sizeTierWidth = 10; // 10 seviyede bir zorlaşma
-    var sizeTier = Math.min(4, Math.floor((lvl-1)/sizeTierWidth)); // 0..4
-    // Izgara en fazla 8x8 olacak şekilde büyüyor (4x4'ten başlayıp
-    // 41. seviyeden itibaren 8x8'de sabitleniyor).
-    var size = 4 + sizeTier; // 4..8
-
-    // [min,max] ölü hücre sayısı; her aralığın başlangıcı bir önceki
-    // aralığın bitişiyle aynı, böylece hiç düşüş olmadan (monotonik)
-    // artıyor. Izgara 8x8'de sabitlendikten sonra (41. seviyeden
-    // itibaren) hâlâ güvenle çözülebilir üretimin izin verdiği en üst
-    // sınıra kadar çok yavaş artmaya devam ediyor.
-    var earlyRanges = [[2,4],[4,6],[6,8],[8,9]]; // sizeTier 0..3 (lvl 1-40)
-    var lockedRange = [9,12]; // sizeTier 4, lvl 41-250 (8x8'de sabit; eski 9x9'un zorluğunu yakalamak için tavan yükseltildi)
-
-    var blockedCount;
-    if(sizeTier < 4){
-      var posInTier = (lvl-1) - sizeTier*sizeTierWidth;
-      var t = Math.min(1, posInTier/(sizeTierWidth-1));
-      var lo = earlyRanges[sizeTier][0], hi = earlyRanges[sizeTier][1];
-      blockedCount = Math.round(lo + (hi-lo)*t);
-    } else {
-      var rangeStart = 4*sizeTierWidth + 1; // 41
-      var t2 = Math.min(1, (lvl-rangeStart)/(MAX_LEVEL-rangeStart));
-      blockedCount = Math.round(lockedRange[0] + (lockedRange[1]-lockedRange[0])*t2);
+    // Faz A: 1-40, ızgara 4x4'ten 7x7'ye kadar büyüyor (her 10 seviyede bir).
+    if(lvl <= 40){
+      var tierWidth = 10;
+      var tier = Math.floor((lvl-1)/tierWidth); // 0..3
+      var size = 4 + tier; // 4..7
+      var earlyRanges = [[2,4],[4,6],[6,8],[8,9]];
+      var posInTier = (lvl-1) - tier*tierWidth;
+      var t = Math.min(1, posInTier/(tierWidth-1));
+      var lo = earlyRanges[tier][0], hi = earlyRanges[tier][1];
+      return { size:size, blockedCount: Math.round(lo + (hi-lo)*t) };
     }
-    return { size:size, blockedCount:blockedCount };
+    // Faz B: 41-150, ızgara 8x8'de sabit, ölü hücre sayısı 9'dan 11'e yükseliyor.
+    if(lvl <= 150){
+      var rangeStart = 41, rangeEnd = 150;
+      var lo = 9, hi = 11;
+      var t = Math.min(1, (lvl-rangeStart)/(rangeEnd-rangeStart));
+      return { size:8, blockedCount: Math.round(lo + (hi-lo)*t) };
+    }
+    // Faz C: 151-250, ızgara 9x9'a büyüyor (asıl zorluk sıçraması burada);
+    // ölü hücre sayısı da 11'den, güvenle çözülebilir üretimin izin
+    // verdiği pratik tavana (12) kadar yavaşça artmaya devam ediyor.
+    var rangeStart = 151, rangeEnd = MAX_LEVEL;
+    var lo = 11, hi = 12;
+    var t = Math.min(1, (lvl-rangeStart)/(rangeEnd-rangeStart));
+    return { size:9, blockedCount: Math.round(lo + (hi-lo)*t) };
   }
 
   function pickBlockedBalanced(size, blockedCount){
@@ -664,7 +663,7 @@
   function generateBoard(lvl){
     var cfg = levelConfig(lvl);
     var size = cfg.size;
-    var stepBudget = 22000;
+    var stepBudget = 25000;
     var result = null;
 
     // Hedeflenen ölü hücre sayısıyla dene; olmazsa direkt sıfıra değil,
