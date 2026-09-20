@@ -222,6 +222,12 @@
     transform:scale(1.06);
     z-index:5;
   }
+
+  .connector{
+    position:absolute;
+    pointer-events:none;
+    border-radius:3px;
+  }
   .cell.is-start:not(.path)::after,
   .cell.is-end::after{
     content:"";
@@ -251,12 +257,6 @@
     0%{box-shadow:0 0 0 0 rgba(242,181,68,0.55);}
     70%{box-shadow:0 0 0 14px rgba(242,181,68,0);}
     100%{box-shadow:0 0 0 0 rgba(242,181,68,0);}
-  }
-
-  .connector{
-    position:absolute;
-    pointer-events:none;
-    border-radius:3px;
   }
 
   .controls{
@@ -783,12 +783,22 @@
 
   function layoutBoard(){
     var size = board.size;
-    gap = size<=5 ? 7 : (size<=7 ? 5.5 : 3);
 
     boardPanel.style.width = '';
     boardPanel.style.height = '';
     var naturalWidth = gridWrap.clientWidth;
-    cellSize = (naturalWidth - gap*(size-1)) / size;
+
+    if(size <= 7){
+      gap = size<=5 ? 7 : 5.5;
+      cellSize = (naturalWidth - gap*(size-1)) / size;
+    } else {
+      // 8x8 ve 9x9: gap'i sabit piksel yerine hücre boyutunun bir oranı
+      // olarak hesapla, böylece 9x9'daki (daha küçük) hücrelerde de
+      // bağlantı çubuğu 8x8 ile aynı orantıda görünür, incelmez.
+      var GAP_RATIO = 0.08;
+      cellSize = naturalWidth / (size + (size-1)*GAP_RATIO);
+      gap = cellSize * GAP_RATIO;
+    }
 
     for(var r=0;r<size;r++){
       for(var c=0;c<size;c++){
