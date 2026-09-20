@@ -507,6 +507,7 @@
   var audioCtx = null;
 
   var gridWrap = document.getElementById('gridWrap');
+  var boardPanel = document.querySelector('.board-panel');
   var levelNumEl = document.getElementById('levelNum');
   var progTextEl = document.getElementById('progText');
   var progressFillEl = document.getElementById('progressFill');
@@ -780,10 +781,37 @@
   }
 
   function layoutBoard(){
-    var w = gridWrap.clientWidth;
     var size = board.size;
     gap = size<=5 ? 7 : (size<=7 ? 5.5 : 4);
-    cellSize = (w - gap*(size-1)) / size;
+
+    // Önce panel'i normal (%100) genişliğine sıfırlayıp ölçüyoruz —
+    // bu, 8x8'in her zaman aldığı "doğal" genişlik.
+    boardPanel.style.width = '';
+    boardPanel.style.height = '';
+    var naturalWidth = gridWrap.clientWidth;
+
+    if(size <= 8){
+      cellSize = (naturalWidth - gap*(size-1)) / size;
+    } else {
+      // 9x9: hücre boyutunu 8x8'dekiyle aynı tut, ekranda yer varsa
+      // paneli genişlet; yoksa (dar ekranda) eski gibi sığdırmaya düş.
+      var gap8 = 4; // size<=7?5.5:4 formülüne göre 8'in gap değeri
+      var baseCellSize = (naturalWidth - gap8*7) / 8;
+      var neededGridWidth = size*baseCellSize + (size-1)*gap;
+
+      var panelPadding = 14;
+      var outerMargin = 14;
+      var maxGridWidth = (window.innerWidth - 2*outerMargin) - 2*panelPadding;
+
+      cellSize = (neededGridWidth <= maxGridWidth)
+        ? baseCellSize
+        : (maxGridWidth - gap*(size-1)) / size;
+
+      var finalGridWidth = size*cellSize + (size-1)*gap;
+      var finalPanelSize = finalGridWidth + 2*panelPadding;
+      boardPanel.style.width = finalPanelSize+'px';
+      boardPanel.style.height = finalPanelSize+'px';
+    }
 
     for(var r=0;r<size;r++){
       for(var c=0;c<size;c++){
