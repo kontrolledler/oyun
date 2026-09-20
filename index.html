@@ -792,12 +792,12 @@
       gap = size<=5 ? 7 : 5.5;
       cellSize = (naturalWidth - gap*(size-1)) / size;
     } else {
-      // 8x8 ve 9x9: gap'i sabit piksel yerine hücre boyutunun bir oranı
-      // olarak hesapla, böylece 9x9'daki (daha küçük) hücrelerde de
-      // bağlantı çubuğu 8x8 ile aynı orantıda görünür, incelmez.
+      // 8x8 ve 9x9: gap her zaman 8x8'in aldığı mesafeyle AYNI (sabit piksel)
+      // olsun; 9x9'da bu mesafeyi korumak için gereken kadar hücre küçülür.
       var GAP_RATIO = 0.08;
-      cellSize = naturalWidth / (size + (size-1)*GAP_RATIO);
-      gap = cellSize * GAP_RATIO;
+      var cellSize8 = naturalWidth / (8 + 7*GAP_RATIO);
+      gap = cellSize8 * GAP_RATIO;
+      cellSize = (naturalWidth - gap*(size-1)) / size;
     }
 
     for(var r=0;r<size;r++){
