@@ -32,7 +32,7 @@
     --danger:#e2586b;
     --good:#4fd3a5;
     --radius-cell:9px;
-    --radius-panel:14px;
+    --radius-panel:26px;
     --radius-btn:14px;
   }
   *{box-sizing:border-box;}
@@ -82,7 +82,7 @@
     z-index:1;
     width:100%;
     max-width:560px;
-    padding:max(20px, env(safe-area-inset-top)) max(6px, env(safe-area-inset-right)) max(28px, env(safe-area-inset-bottom)) max(6px, env(safe-area-inset-left));
+    padding:max(20px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right)) max(28px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left));
     display:flex;
     flex-direction:column;
     align-items:center;
@@ -182,7 +182,7 @@
     background:
       linear-gradient(160deg, var(--bg-panel-2), var(--bg-panel));
     border-radius:var(--radius-panel);
-    padding:3px;
+    padding:14px;
     box-shadow:
       0 30px 60px -25px rgba(0,0,0,0.6),
       inset 0 1px 0 rgba(255,255,255,0.04),
@@ -788,17 +788,8 @@
     boardPanel.style.height = '';
     var naturalWidth = gridWrap.clientWidth;
 
-    if(size <= 7){
-      gap = size<=5 ? 7 : 5.5;
-      cellSize = (naturalWidth - gap*(size-1)) / size;
-    } else {
-      // 8x8 ve 9x9: gap her zaman 8x8'in aldığı mesafeyle AYNI (sabit piksel)
-      // olsun; 9x9'da bu mesafeyi korumak için gereken kadar hücre küçülür.
-      var GAP_RATIO = 0.08;
-      var cellSize8 = naturalWidth / (8 + 7*GAP_RATIO);
-      gap = cellSize8 * GAP_RATIO;
-      cellSize = (naturalWidth - gap*(size-1)) / size;
-    }
+    gap = size<=5 ? 7 : (size<=7 ? 5.5 : 4);
+    cellSize = (naturalWidth - gap*(size-1)) / size;
 
     for(var r=0;r<size;r++){
       for(var c=0;c<size;c++){
