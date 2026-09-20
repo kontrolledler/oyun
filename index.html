@@ -783,39 +783,12 @@
 
   function layoutBoard(){
     var size = board.size;
-    gap = size<=5 ? 7 : (size<=7 ? 5.5 : 2);
+    gap = size<=5 ? 7 : (size<=7 ? 5.5 : 3);
 
-    // Panel'i normal (%100) genişliğine sıfırlayıp ölçüyoruz.
     boardPanel.style.width = '';
     boardPanel.style.height = '';
     var naturalWidth = gridWrap.clientWidth;
-
-    // Ekranda .app'in kendi kutusunun ötesinde gerçekten boş yer var mı?
-    // (Telefon gibi dar ekranlarda yok — orada zaten viewport'un kendisi
-    // sınırlayıcı, .app zaten tüm genişliği kullanıyor.)
-    var appRect = appEl.getBoundingClientRect();
-    var spareRoom = window.innerWidth - appRect.width;
-
-    if(size <= 8 || spareRoom < 40){
-      // Dar ekran ya da 8x8 ve altı: en iyi sığdırmayı kullan.
-      cellSize = (naturalWidth - gap*(size-1)) / size;
-    } else {
-      // Geniş ekran: 8x8'in hücre boyutunu koru, paneli genişlet.
-      var gap8 = 2;
-      var baseCellSize = (naturalWidth - gap8*7) / 8;
-      cellSize = baseCellSize;
-      var neededGridWidth = size*cellSize + (size-1)*gap;
-      var panelPadding = 3;
-      var finalPanelSize = neededGridWidth + 2*panelPadding;
-      var maxPanelSize = window.innerWidth - 20;
-      if(finalPanelSize > maxPanelSize){
-        finalPanelSize = maxPanelSize;
-        var fitGridWidth = finalPanelSize - 2*panelPadding;
-        cellSize = (fitGridWidth - gap*(size-1)) / size;
-      }
-      boardPanel.style.width = finalPanelSize+'px';
-      boardPanel.style.height = finalPanelSize+'px';
-    }
+    cellSize = (naturalWidth - gap*(size-1)) / size;
 
     for(var r=0;r<size;r++){
       for(var c=0;c<size;c++){
