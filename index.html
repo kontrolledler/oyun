@@ -32,7 +32,7 @@
     --danger:#e2586b;
     --good:#4fd3a5;
     --radius-cell:9px;
-    --radius-panel:20px;
+    --radius-panel:14px;
     --radius-btn:14px;
   }
   *{box-sizing:border-box;}
@@ -82,7 +82,7 @@
     z-index:1;
     width:100%;
     max-width:560px;
-    padding:max(20px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(28px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+    padding:max(20px, env(safe-area-inset-top)) max(6px, env(safe-area-inset-right)) max(28px, env(safe-area-inset-bottom)) max(6px, env(safe-area-inset-left));
     display:flex;
     flex-direction:column;
     align-items:center;
@@ -182,7 +182,7 @@
     background:
       linear-gradient(160deg, var(--bg-panel-2), var(--bg-panel));
     border-radius:var(--radius-panel);
-    padding:6px;
+    padding:3px;
     box-shadow:
       0 30px 60px -25px rgba(0,0,0,0.6),
       inset 0 1px 0 rgba(255,255,255,0.04),
@@ -783,7 +783,7 @@
 
   function layoutBoard(){
     var size = board.size;
-    gap = size<=5 ? 7 : (size<=7 ? 5.5 : 3);
+    gap = size<=5 ? 7 : (size<=7 ? 5.5 : 2);
 
     // Panel'i normal (%100) genişliğine sıfırlayıp ölçüyoruz.
     boardPanel.style.width = '';
@@ -801,11 +801,11 @@
       cellSize = (naturalWidth - gap*(size-1)) / size;
     } else {
       // Geniş ekran: 8x8'in hücre boyutunu koru, paneli genişlet.
-      var gap8 = 3;
+      var gap8 = 2;
       var baseCellSize = (naturalWidth - gap8*7) / 8;
       cellSize = baseCellSize;
       var neededGridWidth = size*cellSize + (size-1)*gap;
-      var panelPadding = 6;
+      var panelPadding = 3;
       var finalPanelSize = neededGridWidth + 2*panelPadding;
       var maxPanelSize = window.innerWidth - 20;
       if(finalPanelSize > maxPanelSize){
