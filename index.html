@@ -560,13 +560,13 @@
     // bulmaca yine de belirgin şekilde zorlaşıyor.
     if(lvl <= 300){
       var rangeStart = 251, rangeEnd = 300;
-      var lo = 5, hi = 9;
+      var lo = 7, hi = 10;
       var t = Math.min(1, (lvl-rangeStart)/(rangeEnd-rangeStart));
       return { size:10, blockedCount: Math.round(lo + (hi-lo)*t) };
     }
     // Faz E: 301-350, ızgara 11x11'e büyüyor (oyunun son ve en büyük hâli).
     var rangeStart = 301, rangeEnd = MAX_LEVEL;
-    var lo = 6, hi = 8;
+    var lo = 6, hi = 9;
     var t = Math.min(1, (lvl-rangeStart)/(rangeEnd-rangeStart));
     return { size:11, blockedCount: Math.round(lo + (hi-lo)*t) };
   }
@@ -1222,6 +1222,15 @@
 
   var saved = parseInt(localStorage.getItem(STORAGE_KEY), 10);
   if(saved && saved>=1 && saved<=MAX_LEVEL){ level = saved; }
+
+  var urlParams = new URLSearchParams(window.location.search);
+  var urlLevel = parseInt(urlParams.get('level'), 10);
+  if(urlLevel && urlLevel>=1 && urlLevel<=MAX_LEVEL){
+    level = urlLevel;
+    clearSavedState();
+    localStorage.setItem(STORAGE_KEY, String(level));
+  }
+
   startLevel();
 
   var firstVisit = !localStorage.getItem('labirent_seen_intro');
