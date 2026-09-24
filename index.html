@@ -483,7 +483,7 @@
       <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M12 2l2.6 6.2L21 9l-5 4.4L17.4 21 12 17.3 6.6 21 8 13.4 3 9l6.4-0.8L12 2Z" stroke="#f2b544" stroke-width="1.5" stroke-linejoin="round"/></svg>
     </div>
     <h2>Labirenti tamamladın</h2>
-    <p>250 seviyenin tamamını bitirdin. İstersen baştan başlayıp yeni haritalarla tekrar oynayabilirsin.</p>
+    <p>350 seviyenin tamamını bitirdin. İstersen baştan başlayıp yeni haritalarla tekrar oynayabilirsin.</p>
     <button class="primary" id="playAgainBtn">Tekrar oyna</button>
   </div>
 </div>
@@ -495,7 +495,7 @@
   // ---------- state ----------
   var STORAGE_KEY = 'labirent_level_v1';
   var STATE_KEY = 'labirent_state_v1';
-  var MAX_LEVEL = 250;
+  var MAX_LEVEL = 350;
   var level = 1;
   var board = null;      // {size, blocked:Set(r*size+c), start:[r,c], end:[r,c], total}
   var path = [];         // array of [r,c]
@@ -548,10 +548,27 @@
     // Faz C: 151-250, ızgara 9x9'a büyüyor (asıl zorluk sıçraması burada);
     // ölü hücre sayısı da 11'den, güvenle çözülebilir üretimin izin
     // verdiği pratik tavana (12) kadar yavaşça artmaya devam ediyor.
-    var rangeStart = 151, rangeEnd = MAX_LEVEL;
-    var lo = 11, hi = 12;
+    if(lvl <= 250){
+      var rangeStart = 151, rangeEnd = 250;
+      var lo = 11, hi = 12;
+      var t = Math.min(1, (lvl-rangeStart)/(rangeEnd-rangeStart));
+      return { size:9, blockedCount: Math.round(lo + (hi-lo)*t) };
+    }
+    // Faz D: 251-300, ızgara 10x10'a büyüyor. Daha büyük ızgarada güvenle
+    // çözülebilir üretimin izin verdiği ölü hücre tavanı daha düşük
+    // olduğundan sayı biraz geriler, ama ızgaranın kendisi büyüdüğü için
+    // bulmaca yine de belirgin şekilde zorlaşıyor.
+    if(lvl <= 300){
+      var rangeStart = 251, rangeEnd = 300;
+      var lo = 5, hi = 9;
+      var t = Math.min(1, (lvl-rangeStart)/(rangeEnd-rangeStart));
+      return { size:10, blockedCount: Math.round(lo + (hi-lo)*t) };
+    }
+    // Faz E: 301-350, ızgara 11x11'e büyüyor (oyunun son ve en büyük hâli).
+    var rangeStart = 301, rangeEnd = MAX_LEVEL;
+    var lo = 6, hi = 8;
     var t = Math.min(1, (lvl-rangeStart)/(rangeEnd-rangeStart));
-    return { size:9, blockedCount: Math.round(lo + (hi-lo)*t) };
+    return { size:11, blockedCount: Math.round(lo + (hi-lo)*t) };
   }
 
   function pickBlockedBalanced(size, blockedCount){
@@ -665,7 +682,7 @@
   function generateBoard(lvl){
     var cfg = levelConfig(lvl);
     var size = cfg.size;
-    var stepBudget = 25000;
+    var stepBudget = 30000;
     var result = null;
 
     // Hedeflenen ölü hücre sayısıyla dene; olmazsa direkt sıfıra değil,
@@ -673,7 +690,7 @@
     // hücre yok" durumu neredeyse hiç yaşanmaz — sadece gerçekten
     // imkansız bir durumda en sona (0'a) düşer.
     for(var bc = cfg.blockedCount; bc >= 0; bc--){
-      var maxAttempts = (bc === cfg.blockedCount) ? 600 : 200;
+      var maxAttempts = (bc === cfg.blockedCount) ? 700 : 250;
       var succeeded = false;
       for(var a=0; a<maxAttempts; a++){
         var pick = pickBlockedBalanced(size, bc);
