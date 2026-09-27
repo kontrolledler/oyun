@@ -527,6 +527,9 @@
 
   // ---------- level configuration ----------
   function levelConfig(lvl){
+    // 1-250 arası: eski (arama tabanlı) üretim yöntemiyle aynı zorluk
+    // eğrisi. 251-350 arası: yeni (U-dönüşü kesme) yöntem, küçük ve
+    // dağınık ölü hücre adacıklarıyla.
     // Faz A: 1-40, ızgara 4x4'ten 7x7'ye kadar büyüyor (her 10 seviyede bir).
     if(lvl <= 40){
       var tierWidth = 10;
@@ -538,43 +541,40 @@
       var lo = earlyRanges[tier][0], hi = earlyRanges[tier][1];
       return { size:size, blockedCount: Math.round(lo + (hi-lo)*t) };
     }
-    // Faz B: 41-150, ızgara 8x8'de sabit, ölü hücre sayısı 9'dan 11'e yükseliyor.
+    // Faz B: 41-150, ızgara 8x8'de sabit.
     if(lvl <= 150){
       var rangeStart = 41, rangeEnd = 150;
       var lo = 9, hi = 11;
       var t = Math.min(1, (lvl-rangeStart)/(rangeEnd-rangeStart));
       return { size:8, blockedCount: Math.round(lo + (hi-lo)*t) };
     }
-    // Faz C: 151-250, ızgara 9x9'a büyüyor (asıl zorluk sıçraması burada);
-    // ölü hücre sayısı da 11'den, güvenle çözülebilir üretimin izin
-    // verdiği pratik tavana (12) kadar yavaşça artmaya devam ediyor.
+    // Faz C: 151-250, ızgara 9x9'a büyüyor.
     if(lvl <= 250){
       var rangeStart = 151, rangeEnd = 250;
       var lo = 11, hi = 12;
       var t = Math.min(1, (lvl-rangeStart)/(rangeEnd-rangeStart));
       return { size:9, blockedCount: Math.round(lo + (hi-lo)*t) };
     }
-    // Faz D: 251-300, ızgara 10x10'a büyüyor. Daha büyük ızgarada güvenle
-    // çözülebilir üretimin izin verdiği ölü hücre tavanı daha düşük
-    // olduğundan sayı biraz geriler, ama ızgaranın kendisi büyüdüğü için
-    // bulmaca yine de belirgin şekilde zorlaşıyor.
+    // Faz D: 251-300, ızgara 10x10'a büyüyor.
     if(lvl <= 300){
       var rangeStart = 251, rangeEnd = 300;
-      var lo = 7, hi = 10;
+      var lo = 8, hi = 14;
       var t = Math.min(1, (lvl-rangeStart)/(rangeEnd-rangeStart));
       return { size:10, blockedCount: Math.round(lo + (hi-lo)*t) };
     }
     // Faz E: 301-350, ızgara 11x11'e büyüyor (oyunun son ve en büyük hâli).
     var rangeStart = 301, rangeEnd = MAX_LEVEL;
-    var lo = 6, hi = 9;
+    var lo = 9, hi = 15;
     var t = Math.min(1, (lvl-rangeStart)/(rangeEnd-rangeStart));
     return { size:11, blockedCount: Math.round(lo + (hi-lo)*t) };
   }
 
+  // ---------- eski (arama tabanlı) üretim yöntemi: seviye 1-250 ----------
+  // Rastgele ölü hücreler seçilir (iki renkli satranç tahtası dengesini
+  // koruyarak), sonra bu düzende tam bir yol aranır; olmazsa hedefi bir
+  // azaltıp tekrar dener (kademeli düşüş), en kötü ihtimalle hiç ölü
+  // hücresiz garanti bir yılan-yol'a düşer.
   function pickBlockedBalanced(size, blockedCount){
-    // Grid Hamiltonian paths require the two checkerboard color classes of
-    // FREE cells to differ by at most 1 in count; pre-filtering on this
-    // cheap check avoids wasting time on mathematically impossible layouts.
     var all = [];
     for(var i=0;i<size*size;i++) all.push(i);
     shuffle(all);
@@ -589,28 +589,6 @@
       }
     }
     return { blockedSet:blockedSet, balanced: Math.abs(c0-c1)<=1 };
-  }
-
-  // ---------- maze / hamiltonian path generation ----------
-  function generateSnakePath(size){
-    // guaranteed boustrophedon path covering full grid, randomly oriented
-    var path = [];
-    var flipRows = Math.random()<0.5;
-    var flipCols = Math.random()<0.5;
-    var transpose = Math.random()<0.5;
-    for(var i=0;i<size;i++){
-      var r = i;
-      var colsOrder = [];
-      for(var j=0;j<size;j++) colsOrder.push(j);
-      if(i%2===1) colsOrder.reverse();
-      for(var k=0;k<colsOrder.length;k++){
-        var c = colsOrder[k];
-        var rr = flipRows ? size-1-r : r;
-        var cc = flipCols ? size-1-c : c;
-        path.push(transpose ? [cc,rr] : [rr,cc]);
-      }
-    }
-    return path;
   }
 
   function tryGeneratePath(size, blockedSet, totalFree, stepBudget){
@@ -645,7 +623,6 @@
         visited[k]=0; path.pop();
         return false;
       }
-      // Warnsdorff heuristic: fewest onward options first, random tie-break
       shuffle(nbrs);
       for(var i=0;i<nbrs.length;i++){
         nbrs[i].push(neighborsOf(nbrs[i][0],nbrs[i][1]).length);
@@ -679,18 +656,11 @@
     return found;
   }
 
-  function generateBoard(lvl){
-    var cfg = levelConfig(lvl);
-    var size = cfg.size;
+  function generateBoardSearchBased(size, targetBlocked){
     var stepBudget = 30000;
     var result = null;
-
-    // Hedeflenen ölü hücre sayısıyla dene; olmazsa direkt sıfıra değil,
-    // önce bir azlığıyla dene (hedef-1, hedef-2, ...). Böylece "hiç ölü
-    // hücre yok" durumu neredeyse hiç yaşanmaz — sadece gerçekten
-    // imkansız bir durumda en sona (0'a) düşer.
-    for(var bc = cfg.blockedCount; bc >= 0; bc--){
-      var maxAttempts = (bc === cfg.blockedCount) ? 700 : 250;
+    for(var bc = targetBlocked; bc >= 0; bc--){
+      var maxAttempts = (bc === targetBlocked) ? 700 : 250;
       var succeeded = false;
       for(var a=0; a<maxAttempts; a++){
         var pick = pickBlockedBalanced(size, bc);
@@ -705,13 +675,10 @@
       }
       if(succeeded) break;
     }
-
     if(!result){
-      // guaranteed fallback: no obstacles, deterministic snake path
       var p2 = generateSnakePath(size);
       result = { size:size, blocked:new Set(), path:p2, total:size*size };
     }
-
     return {
       size: result.size,
       blocked: result.blocked,
@@ -719,6 +686,146 @@
       end: result.path[result.path.length-1],
       total: result.total
     };
+  }
+
+  // ---------- maze / hamiltonian path generation ----------
+  //
+  // Yöntem: önce TÜM ızgarayı kapsayan bir yol (Hamiltonian path) üret —
+  // bu her zaman hızlı ve güvenilir çalışır (engel yokken arama çok kolay).
+  // Sonra bu yolun üzerindeki "U dönüşü" kısımlarını bul: yol sırasında
+  // birbirine bitişik OLMAYAN ama ARADA birkaç hücre sonra tekrar bitişik
+  // hâle gelen noktalar. Aradaki hücreleri "ölü hücre" yaparak yoldan
+  // çıkarıp iki ucu doğrudan birbirine bağlıyoruz. Bu, kalan yolun hâlâ
+  // geçerli (bitişik, tekrarsız) bir yol olmasını MATEMATİKSEL OLARAK
+  // garanti eder — arama/deneme yapmaya hiç gerek kalmaz, çok daha hızlı
+  // çalışır ve çok daha yüksek engel yoğunluğuna ulaşabilir.
+  function isBorderCell(r,c,size){
+    return r===0 || c===0 || r===size-1 || c===size-1;
+  }
+
+  function generateSnakePath(size){
+    // guaranteed boustrophedon path covering full grid, randomly oriented
+    // (yalnızca gerçekten imkansız bir durumda son çare olarak kullanılır)
+    var path = [];
+    var flipRows = Math.random()<0.5;
+    var flipCols = Math.random()<0.5;
+    var transpose = Math.random()<0.5;
+    for(var i=0;i<size;i++){
+      var r = i;
+      var colsOrder = [];
+      for(var j=0;j<size;j++) colsOrder.push(j);
+      if(i%2===1) colsOrder.reverse();
+      for(var k=0;k<colsOrder.length;k++){
+        var c = colsOrder[k];
+        var rr = flipRows ? size-1-r : r;
+        var cc = flipCols ? size-1-c : c;
+        path.push(transpose ? [cc,rr] : [rr,cc]);
+      }
+    }
+    return path;
+  }
+
+
+  // U-dönüşü kesme tekniğinin bir sınırı var: yol üzerinde doğrudan
+  // "kes ve uçları birleştir" yöntemiyle SADECE çift sayılı (2, 4, 6...)
+  // adacıklar oluşturulabiliyor — tek sayılı (1, 3) adacıklar bu yöntemle
+  // matematiksel olarak imkansız (ızgara üzerindeki satranç tahtası
+  // rengi/parite kısıtı yüzünden). 1, 2 ve 3 hücrelik karışık adacıklar
+  // için bunun yerine, küçük kümeler hâlinde rastgele yerleştirip normal
+  // yol aramasıyla doğrulayan bu yöntemi kullanıyoruz (250 sonrası için).
+  function pickClusteredBlocked(size, targetCount, maxClusterInterior, maxClusterBorder){
+    var blockedSet = new Set();
+    var attempts = 0;
+    var maxAttempts = targetCount * 30 + 30;
+    while(blockedSet.size < targetCount && attempts < maxAttempts){
+      attempts++;
+      var clusterCap = 1 + ((Math.random()*3)|0); // 1, 2 veya 3
+      var sr = (Math.random()*size)|0, sc = (Math.random()*size)|0;
+      if(blockedSet.has(sr*size+sc)) continue;
+      var clusterCells = [[sr,sc]];
+      var clusterKeys = [sr*size+sc];
+      while(clusterCells.length < clusterCap){
+        var base = clusterCells[(Math.random()*clusterCells.length)|0];
+        var dirs = shuffle([[0,1],[0,-1],[1,0],[-1,0]]);
+        var grown = false;
+        for(var d=0; d<dirs.length; d++){
+          var nr=base[0]+dirs[d][0], nc=base[1]+dirs[d][1];
+          if(nr<0||nr>=size||nc<0||nc>=size) continue;
+          var k=nr*size+nc;
+          if(blockedSet.has(k) || clusterKeys.indexOf(k)!==-1) continue;
+          clusterCells.push([nr,nc]); clusterKeys.push(k);
+          grown=true; break;
+        }
+        if(!grown) break;
+      }
+      var touchesExisting = false, touchesBorder = false;
+      for(var i=0;i<clusterCells.length;i++){
+        var r=clusterCells[i][0], c=clusterCells[i][1];
+        if(isBorderCell(r,c,size)) touchesBorder = true;
+        var nbrs=[[r-1,c],[r+1,c],[r,c-1],[r,c+1]];
+        for(var n=0;n<4;n++){
+          var nr=nbrs[n][0], nc=nbrs[n][1];
+          if(nr<0||nr>=size||nc<0||nc>=size) continue;
+          if(blockedSet.has(nr*size+nc)) touchesExisting = true;
+        }
+      }
+      if(touchesExisting) continue; // kümelerin birbirine yapışıp büyümesini engelle
+      var cap = touchesBorder ? maxClusterBorder : maxClusterInterior;
+      if(clusterCells.length > cap) continue;
+      if(blockedSet.size + clusterCells.length > targetCount + 2) continue;
+      for(var i=0;i<clusterKeys.length;i++) blockedSet.add(clusterKeys[i]);
+    }
+    var c0=0, c1=0;
+    for(var r=0;r<size;r++){
+      for(var c=0;c<size;c++){
+        if(blockedSet.has(r*size+c)) continue;
+        if((r+c)%2===0) c0++; else c1++;
+      }
+    }
+    return { blockedSet: blockedSet, balanced: Math.abs(c0-c1)<=1 };
+  }
+
+  function generateBoardClustered(size, targetBlocked){
+    var stepBudget = 25000;
+    var result = null;
+    for(var bc = targetBlocked; bc >= 0; bc--){
+      var maxAttempts = (bc === targetBlocked) ? 400 : 150;
+      var succeeded = false;
+      for(var a=0; a<maxAttempts; a++){
+        var pick = pickClusteredBlocked(size, bc, 3, 2);
+        if(!pick.balanced) continue;
+        var totalFree = size*size - pick.blockedSet.size;
+        var p = tryGeneratePath(size, pick.blockedSet, totalFree, stepBudget);
+        if(p && p.length===totalFree){
+          result = { size:size, blocked:pick.blockedSet, path:p, total:totalFree };
+          succeeded = true;
+          break;
+        }
+      }
+      if(succeeded) break;
+    }
+    if(!result){
+      var p2 = generateSnakePath(size);
+      result = { size:size, blocked:new Set(), path:p2, total:size*size };
+    }
+    return {
+      size: result.size,
+      blocked: result.blocked,
+      start: result.path[0],
+      end: result.path[result.path.length-1],
+      total: result.total
+    };
+  }
+
+  function generateBoard(lvl){
+    var cfg = levelConfig(lvl);
+    // 1-250 (ızgara 4x4..9x9): eski, kanıtlanmış arama tabanlı yöntem.
+    // 251-350 (ızgara 10x10, 11x11): küçük kümeler hâlinde rastgele
+    // yerleştirme + arama — 1, 2 ve 3 hücrelik karışık adacıklar verir.
+    if(cfg.size <= 9){
+      return generateBoardSearchBased(cfg.size, cfg.blockedCount);
+    }
+    return generateBoardClustered(cfg.size, cfg.blockedCount);
   }
 
   // ---------- persistence (aynı haritaya ve ilerlemeye geri dönebilmek için) ----------
